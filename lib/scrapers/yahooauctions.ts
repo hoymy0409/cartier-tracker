@@ -1,8 +1,7 @@
 import { Listing, Material, Condition, HasItem } from "@/types/listing";
 import { v4 as uuidv4 } from "uuid";
 
-const RSS_URL =
-  "https://auctions.yahoo.co.jp/rss/search?p=%E3%82%AB%E3%83%AB%E3%83%86%E3%82%A3%E3%82%A8+%E3%82%B5%E3%83%B3%E3%83%88%E3%82%B9&auccat=&atype=p&slider=0";
+"https://auctions.yahoo.co.jp/rss/search?p=カルティエ+サントス&va=カルティエ+サントス&exflg=1&b=1&n=50&s1=new&o1=d";
 
 function parseMaterial(title: string): Material {
   const hasPG = /ピンクゴールド|PG|ローズゴールド|RG/i.test(title);
