@@ -1,9 +1,12 @@
 import { NextResponse } from "next/server";
 import { supabase } from "@/lib/db";
+import { runAllScrapers } from "@/lib/scrapers";
 
 export const dynamic = "force-dynamic";
 
 export async function GET() {
+  await runAllScrapers();
+  
   const { data, error } = await supabase
     .from("listings")
     .select("*")
