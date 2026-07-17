@@ -2,7 +2,7 @@ import { Listing, Material, Condition, HasItem } from "@/types/listing";
 import { v4 as uuidv4 } from "uuid";
 
 const RSS_URL =
-  "https://auctions.yahoo.co.jp/rss/search?p=%E3%82%AB%E3%83%AB%E3%83%86%E3%82%A3%E3%82%A8+%E3%82%B5%E3%83%B3%E3%83%88%E3%82%B9+MM&auccat=&atype=p&slider=0";
+  "https://auctions.yahoo.co.jp/rss/search?p=%E3%82%AB%E3%83%AB%E3%83%86%E3%82%A3%E3%82%A8+%E3%82%B5%E3%83%B3%E3%83%88%E3%82%B9&auccat=&atype=p&slider=0";
 
 function parseMaterial(title: string): Material {
   const hasPG = /ピンクゴールド|PG|ローズゴールド|RG/i.test(title);
@@ -54,54 +54,3 @@ function getText(block: string, tag: string): string {
       "i"
     )
   );
-  return m ? (m[1] ?? m[2] ?? "").trim() : "";
-}
-
-export async function scrapeYahooAuctions(): Promise<Listing[]> {
-  const res = await fetch(RSS_URL, {
-    headers: { "User-Agent": "Mozilla/5.0 (compatible; CartierTracker/1.0)" },
-    next: { revalidate: 0 },
-  });
-
-  if (!res.ok) {
-    console.error(`Yahoo RSS error: ${res.status}`);
-    return [];
-  }
-
-  const xml = await res.text();
-  const itemRegex = /<item>([\s\S]*?)<\/item>/g;
-  const listings: Listing[] = [];
-  let match;
-
-  while ((match = itemRegex.exec(xml)) !== null) {
-    const block = match[1];
-    const title = getText(block, "title");
-    const link = getText(block, "link");
-    const description = getText(block, "description");
-    const pubDate = getText(block, "pubDate");
-
-    if (!title || !link) continue;
-
-    // サントスMMに絞り込み（MMが含まれるものだけ）
-    if (!/サントス/i.test(title)) continue;
-    if (!/\bMM\b/.test(title)) continue;
-
-    const combined = title + " " + description;
-
-    listings.push({
-      id: uuidv4(),
-      title,
-      price: parsePrice(description),
-      image_url: parseImageUrl(description),
-      listing_url: link,
-      platform: "ヤフオク",
-      material: parseMaterial(combined),
-      condition: parseCondition(combined),
-      has_warranty: parseWarranty(combined),
-      has_box: parseBox(combined),
-      listed_at: pubDate ? new Date(pubDate).toISOString() : new Date().toISOString(),
-    });
-  }
-
-  return listings;
-}
