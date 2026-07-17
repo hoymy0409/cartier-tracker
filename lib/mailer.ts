@@ -19,7 +19,7 @@ export async function sendNewListingNotifications(listing: Listing): Promise<voi
     : "価格不明";
 
   await resend.emails.send({
-    from: "カルティエ サントス通知 <notify@yourdomain.com>",
+    from: "カルティエ サントス通知 <onboarding@resend.dev>",
     to: emails,
     subject: `【新着】${listing.platform}に出品されました — ${priceText}`,
     html: `
