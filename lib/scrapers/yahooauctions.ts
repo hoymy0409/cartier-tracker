@@ -1,8 +1,6 @@
 import { Listing, Material, Condition, HasItem } from "@/types/listing";
 import { v4 as uuidv4 } from "uuid";
 
-"https://auctions.yahoo.co.jp/rss/search?p=カルティエ+サントス&va=カルティエ+サントス&exflg=1&b=1&n=50&s1=new&o1=d";
-
 function parseMaterial(title: string): Material {
   const hasPG = /ピンクゴールド|PG|ローズゴールド|RG/i.test(title);
   const hasSS = /ステンレス|SS/i.test(title);
@@ -29,27 +27,45 @@ function parseWarranty(text: string): HasItem {
 
 function parseBox(text: string): HasItem {
   if (/外箱[:：\s]*あり|箱あり|ボックス付|BOX付/.test(text)) return "あり";
-  if (/外箱[:：\s]*なし|箱なし|ボックスなし/.test(text)) return "なし";
+  if (/外箱[:：\s]*なし|箱なし/.test(text)) return "なし";
   return "不明";
 }
 
-function parsePrice(html: string): number | null {
-  const m = html.match(/現在([0-9,]+)円/);
-  if (m) return parseInt(m[1].replace(/,/g, ""), 10);
-  const m2 = html.match(/([0-9,]+)\s*円/);
-  if (m2) return parseInt(m2[1].replace(/,/g, ""), 10);
-  return null;
-}
+export async function scrapeYahooAuctions(): Promise<Listing[]> {
+  const query = encodeURIComponent("カルティエ サントス MM");
+  const url = `https://auctions.yahoo.co.jp/search/search?p=${query}&s1=new&o1=d&mode=2`;
+  
+  const res = await fetch(url, {
+    headers: { 
+      "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+    },
+    cache: "no-store",
+  });
 
-function parseImageUrl(html: string): string | null {
-  const m = html.match(/<img[^>]+src="([^"]+)"/i);
-  return m ? m[1] : null;
-}
+  if (!res.ok) {
+    console.error(`Yahoo fetch error: ${res.status}`);
+    return [];
+  }
 
-function getText(block: string, tag: string): string {
-  const m = block.match(
-    new RegExp(
-      `<${tag}[^>]*><!\\[CDATA\\[([\\s\\S]*?)\\]\\]><\\/${tag}>|<${tag}[^>]*>([\\s\\S]*?)<\\/${tag}>`,
-      "i"
-    )
-  );
+  const html = await res.text();
+  const listings: Listing[] = [];
+
+  const itemRegex = /<li[^>]*class="[^"]*Product[^"]*"[^>]*>([\s\S]*?)<\/li>/g;
+  const titleRegex = /<h3[^>]*class="[^"]*Product__title[^"]*"[^>]*>[\s\S]*?<a[^>]*href="([^"]+)"[^>]*>([\s\S]*?)<\/a>/;
+  const priceRegex = /([0-9,]+)\s*円/;
+  const imgRegex = /<img[^>]+src="([^"]+)"/;
+  const dateRegex = /(\d{4}年\d{1,2}月\d{1,2}日|\d{1,2}月\d{1,2}日)/;
+
+  let match;
+  while ((match = itemRegex.exec(html)) !== null) {
+    const block = match[1];
+    const titleMatch = titleRegex.exec(block);
+    if (!titleMatch) continue;
+
+    const link = titleMatch[1];
+    const title = titleMatch[2].replace(/<[^>]+>/g, "").trim();
+
+    if (!/サントス/i.test(title)) continue;
+
+    const priceMatch = priceRegex.exec(block);
+    const price = priceMatch ? parseInt(priceMatch[1].replace(/,/g, ""), 10) :
